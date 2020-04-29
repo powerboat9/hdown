@@ -1,11 +1,8 @@
-use scraper::{Html, Selector, ElementRef};
+use scraper::{Html, Selector};
 use regex::Regex;
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::collections::HashMap;
-use scraper::html::Select;
-use std::fmt::{Display, Formatter, Write};
-use scraper::node::Node::Document;
-use clap::{App, Arg, ArgSettings};
+use std::fmt::{Display, Formatter};
+use clap::{App, Arg};
 use std::process::exit;
 
 fn main() {
@@ -128,11 +125,6 @@ fn get_show_torrents(id: u32, epoch: u64) -> Result<Vec<(String, String)>, PageE
         }
     }
     Ok(ls)
-}
-
-fn get_name_from_tag(e: &ElementRef) -> String {
-    println!("{:?}", e);
-    e.html()
 }
 
 fn get_show_id(url: &str) -> Result<u32, PageError> {
