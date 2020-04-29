@@ -21,6 +21,11 @@ fn main() {
                 .help("accepts a show id instead of a url")
         )
         .arg(
+            Arg::with_name("batch")
+                .short("b")
+                .help("shows batches instead of episodes")
+        )
+        .arg(
             Arg::with_name("SHOW")
                 .help("the show to download, by default the show's url")
                 .required(true)
@@ -44,7 +49,7 @@ fn main() {
             }
         }
     };
-    let list = get_show_torrents(id, get_epoch()).unwrap();
+    let list = get_show_torrents(id, get_epoch(), a.is_present("batch")).unwrap();
     for e in list {
         if a.is_present("only-links") {
             println!("{}", e.1);
@@ -90,13 +95,17 @@ fn get_epoch() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).expect("back in time").as_secs()
 }
 
-fn get_show_torrents(id: u32, epoch: u64) -> Result<Vec<(String, String)>, PageError> {
+fn get_show_torrents(id: u32, epoch: u64, use_batches: bool) -> Result<Vec<(String, String)>, PageError> {
     let mut idx = 0;
     let mut ls = Vec::new();
     loop {
-        let data = download_page(format!("https://horriblesubs.info/api.php?method=getshows&type=show&showid={}&nextid={}&_={}", id, idx, epoch).as_str())?;
+        let data = download_page(format!("https://horriblesubs.info/api.php?method=getshows&type={}&showid={}&nextid={}&_={}", if use_batches {
+            "batch"
+        } else {
+            "show"
+        }, id, idx, epoch).as_str())?;
         idx += 1;
-        if data.as_str() == "DONE" {
+        if data.as_str() == "DONE" || data.as_str() == "There are no batches for this show yet" {
             break
         }
         let div_find = Selector::parse(".rls-info-container").unwrap();
