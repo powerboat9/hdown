@@ -5,6 +5,13 @@ use std::fmt::{Display, Formatter};
 use clap::{App, Arg};
 use std::process::exit;
 
+extern crate ureq;
+extern crate scraper;
+extern crate regex;
+extern crate clap;
+#[macro_use]
+extern crate lazy_static;
+
 fn main() {
     let a = App::new("Horrible Subs Downloader")
         .version("1.0")
@@ -152,15 +159,21 @@ fn get_show_torrents(id: u32, epoch: u64, use_batches: bool) -> Result<Vec<(Stri
     Ok(ls)
 }
 
+lazy_static! {
+    static ref ID_FINDER: Regex = Regex::new("<script type=\"text/javascript\">var hs_showid = (\\d+);</script>").unwrap();
+}
+
 fn get_show_id(url: &str) -> Result<u32, PageError> {
     let data = download_page(url)?;
-    let id_finder = Regex::new("<script type=\"text/javascript\">var hs_showid = (\\d+);</script>").unwrap();
-    let id = id_finder.captures(data.as_str()).unwrap().get(1).ok_or(PageError::ParseError)?;
+    let id = ID_FINDER.captures(data.as_str()).unwrap().get(1).ok_or(PageError::ParseError)?;
     id.as_str().parse().map_err(|_| PageError::ParseError)
+}
+
+lazy_static! {
+    static ref LINK_FINDER: Regex = Regex::new("<a href=\"([^\"]+)\" title=\"([^\"]+)\">").unwrap();
 }
 
 fn get_show_list() -> Result<Vec<(String, String)>, PageError> {
     let data = download_page("https://horriblesubs.info/shows")?;
-    let link_finder = Regex::new("<a href=\"([^\"]+)\" title=\"([^\"]+)\">").unwrap();
-    Ok(link_finder.captures_iter(data.as_str()).map(|caps| (caps.get(2).unwrap().as_str().to_owned(), format!("https://horriblesubs.info{}", caps.get(1).unwrap().as_str()))).collect())
+    Ok(LINK_FINDER.captures_iter(data.as_str()).map(|caps| (caps.get(2).unwrap().as_str().to_owned(), format!("https://horriblesubs.info{}", caps.get(1).unwrap().as_str()))).collect())
 }
