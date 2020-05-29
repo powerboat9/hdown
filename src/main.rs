@@ -37,13 +37,12 @@ fn main() {
         let list = get_show_list().unwrap();
         let only_links = a.is_present("only-links");
         let show_id = a.is_present("use-id");
-        for e in list {
-            let url = format!("https://horriblesubs.info{}", e.0.as_str());
+        for e in list.iter() {
             match (only_links, show_id) {
-                (false, false) => println!("{}: {}", e.1, url.as_str()),
-                (false, true) => println!("{}: {}", e.1, get_show_id(url.as_str()).unwrap()),
-                (true, false) => println!("{}", url.as_str()),
-                (true, true) => println!("{}", get_show_id(url.as_str()).unwrap())
+                (false, false) => println!("{}: {}", e.0, e.1),
+                (false, true) => println!("{}: {}", e.0, get_show_id(e.1.as_str()).unwrap()),
+                (true, false) => println!("{}", e.1),
+                (true, true) => println!("{}", get_show_id(e.1.as_str()).unwrap())
             }
         }
     } else {
@@ -163,5 +162,5 @@ fn get_show_id(url: &str) -> Result<u32, PageError> {
 fn get_show_list() -> Result<Vec<(String, String)>, PageError> {
     let data = download_page("https://horriblesubs.info/shows")?;
     let link_finder = Regex::new("<a href=\"([^\"]+)\" title=\"([^\"]+)\">").unwrap();
-    Ok(link_finder.captures_iter(data.as_str()).map(|caps| (caps.get(1).unwrap().as_str().to_owned(), caps.get(2).unwrap().as_str().to_owned())).collect())
+    Ok(link_finder.captures_iter(data.as_str()).map(|caps| (caps.get(2).unwrap().as_str().to_owned(), format!("https://horriblesubs.info{}", caps.get(1).unwrap().as_str()))).collect())
 }
