@@ -13,12 +13,12 @@ fn main() {
         .arg(
             Arg::with_name("only-links")
                 .short("l")
-                .help("only prints out magnet links, intended for scripts")
+                .help("only prints out urls, intended for scripts")
         )
         .arg(
             Arg::with_name("use-id")
                 .short("i")
-                .help("accepts a show id instead of a url")
+                .help("accept/display show ids instead of urls")
         )
         .arg(
             Arg::with_name("batch")
@@ -27,35 +27,52 @@ fn main() {
         )
         .arg(
             Arg::with_name("SHOW")
-                .help("the show to download, by default the show's url")
+                .help("the show to download, by default the show's url, \"list\" to list shows")
                 .required(true)
                 .index(1)
         )
         .get_matches();
-    let id: u32 = if a.is_present("use-id") {
-        match a.value_of("SHOW").unwrap().parse() {
-            Ok(o) => o,
-            Err(e) => {
-                eprintln!("[ERROR] SHOW expected positive numeric id: {}", e);
-                exit(-2)
+    let id = a.value_of("SHOW").unwrap();
+    if id == "list" {
+        let list = get_show_list().unwrap();
+        let only_links = a.is_present("only-links");
+        let show_id = a.is_present("use-id");
+        for e in list {
+            let url = format!("https://horriblesubs.info{}", e.0.as_str());
+            match (only_links, show_id) {
+                (false, false) => println!("{}: {}", e.1, url.as_str()),
+                (false, true) => println!("{}: {}", e.1, get_show_id(url.as_str()).unwrap()),
+                (true, false) => println!("{}", url.as_str()),
+                (true, true) => println!("{}", get_show_id(url.as_str()).unwrap())
             }
         }
     } else {
-        match get_show_id(a.value_of("SHOW").unwrap()) {
-            Ok(v) => v,
-            Err(e) => {
-                eprintln!("[ERROR]: {}", e);
-                exit(-2)
+        let id: u32 = if a.is_present("use-id") {
+            match id.parse() {
+                Ok(o) => o,
+                Err(e) => {
+                    eprintln!("[ERROR] SHOW expected positive numeric id: {}", e);
+                    exit(-2)
+                }
             }
-        }
-    };
-    let list = get_show_torrents(id, get_epoch(), a.is_present("batch")).unwrap();
-    for e in list {
-        if a.is_present("only-links") {
-            println!("{}", e.1);
         } else {
-            println!("name: {}", e.0);
-            println!("link: {}", e.1);
+            match get_show_id(id) {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!("[ERROR]: {}", e);
+                    exit(-2)
+                }
+            }
+        };
+        let list = get_show_torrents(id, get_epoch(), a.is_present("batch")).unwrap();
+        let only_links = a.is_present("only-links");
+        for e in list {
+            if only_links {
+                println!("{}", e.1);
+            } else {
+                println!("name: {}", e.0);
+                println!("link: {}", e.1);
+            }
         }
     }
 }
@@ -141,4 +158,10 @@ fn get_show_id(url: &str) -> Result<u32, PageError> {
     let id_finder = Regex::new("<script type=\"text/javascript\">var hs_showid = (\\d+);</script>").unwrap();
     let id = id_finder.captures(data.as_str()).unwrap().get(1).ok_or(PageError::ParseError)?;
     id.as_str().parse().map_err(|_| PageError::ParseError)
+}
+
+fn get_show_list() -> Result<Vec<(String, String)>, PageError> {
+    let data = download_page("https://horriblesubs.info/shows")?;
+    let link_finder = Regex::new("<a href=\"([^\"]+)\" title=\"([^\"]+)\">").unwrap();
+    Ok(link_finder.captures_iter(data.as_str()).map(|caps| (caps.get(1).unwrap().as_str().to_owned(), caps.get(2).unwrap().as_str().to_owned())).collect())
 }
