@@ -84,7 +84,7 @@ fn main() -> Result<(), PageError> {
             None | Some("auto") => LinkType::Auto,
             _ => return Err(PageError::CommandLineError("unrecognized resolution"))
         };
-        let list = get_show_torrents(id, get_epoch(), link_type, a.is_present("batch"))?;
+        let list = get_show_torrents(id, get_epoch(), link_type, submatch.is_present("batch"))?;
         let only_links = a.is_present("only-links");
         for e in list {
             if only_links {
